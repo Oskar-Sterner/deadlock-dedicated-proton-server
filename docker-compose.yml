@@ -1,0 +1,24 @@
+services:
+  deadlock:
+    restart: always
+    container_name: deadlock
+    image: deadlock-server
+    volumes:
+      - ./server:/app
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    environment:
+      - PORT=${PORT}
+      - SERVER_PASSWORD=${SERVER_PASSWORD}
+      - MAP=${MAP}
+      - STEAM_LOGIN=${STEAM_LOGIN}
+      - STEAM_PASSWORD=${STEAM_PASSWORD}
+      - STEAM_2FA_CODE=${STEAM_2FA_CODE}
+      - SKIP_UPDATE=${SKIP_UPDATE}
+      - PROTON_LOG=1
+      - PROTON_NO_WRITE_WATCH=1
+      - WINEDLLOVERRIDES=winedbg.exe=d
+      - DISPLAY=:99
+    ports:
+      - "${PORT:-27015}:${PORT:-27015}/tcp"
+      - "${PORT:-27015}:${PORT:-27015}/udp"
