@@ -15,9 +15,28 @@ Run Valve's Deadlock dedicated server on Linux using Docker and GE-Proton. A tem
 | Default map | `street_test` (doesn't exist) | **`dl_streets`** |
 | Skip updates | Not supported | **`SKIP_UPDATE=1`** to skip SteamCMD on restart |
 
+## Important: Performance Expectations
+
+**This is not like hosting a CS2 server.** Expect significantly higher resource usage and lower tick rates compared to traditional Source engine dedicated servers.
+
+CS2 and other Source engine games ship a **native Linux dedicated server binary** ([srcds](https://developer.valvesoftware.com/wiki/Source_Dedicated_Server)) that runs headless — no GPU, no rendering pipeline, just pure game simulation. That's why CS2 servers run fine on cheap CPU-only VPS instances.
+
+**Deadlock does not have a native Linux server binary.** As of April 2026, Valve only provides a Windows executable (`deadlock.exe`), with no separate dedicated server AppID or headless mode ([Steam Community discussion](https://steamcommunity.com/app/1422450/discussions/0/4431066216144896146/), [SteamDB](https://steamdb.info/app/1422450/)). This project works around that by running the Windows binary through [GE-Proton](https://github.com/GloriousEggroll/proton-ge-custom) (Wine), which means:
+
+- **DXVK + Vulkan rendering is active** even in dedicated mode. On servers without a GPU, this falls back to [Mesa llvmpipe](https://docs.mesa3d.org/drivers/llvmpipe.html) (software rendering), which is CPU-intensive.
+- **Higher CPU and memory usage** compared to a native headless server. Expect 1-2 GB RAM and sustained high CPU usage during gameplay.
+- **Server performance will be limited** on typical VPS hardware. Players may experience lag or low server tick rates, especially on budget instances.
+
+**Recommended hardware for acceptable performance:**
+- A dedicated server or VPS with a **GPU** (e.g. Hetzner GPU instances), OR
+- A high-core-count CPU (8+ cores) to handle software rendering overhead
+- 16 GB+ RAM
+
+This is a community workaround. When Valve releases a proper headless Linux server binary (like they did for CS2), these limitations will go away.
+
 ## Requirements
 
-- Linux server with **8 GB+ RAM** and **40 GB+ free disk space**
+- Linux server with **8 GB+ RAM** (16 GB+ recommended) and **40 GB+ free disk space**
 - Docker and Docker Compose
 - A Steam account that owns Deadlock
 
