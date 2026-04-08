@@ -37,6 +37,33 @@ ENV STEAM_COMPAT_CLIENT_INSTALL_PATH=${STEAM_PATH} \
     PROTON=${STEAM_PATH}/compatibilitytools.d/${PROTON_VERSION}/proton \
     DISPLAY=:99
 
+# --- Headless rendering optimizations ---
+# These dramatically reduce CPU/memory usage on servers without a GPU
+# by minimizing the work done by DXVK, Mesa llvmpipe, and Wine.
+
+# Wine: suppress all debug output (major CPU saver)
+ENV WINEDEBUG="-all" \
+    WINE_LARGE_ADDRESS_AWARE=1
+
+# DXVK: disable logging and shader cache (saves CPU + disk I/O)
+ENV DXVK_LOG_LEVEL="none" \
+    DXVK_STATE_CACHE=0
+
+# Mesa llvmpipe: minimize software rendering overhead
+ENV MESA_NO_ERROR=1 \
+    MESA_SHADER_CACHE_DISABLE="true" \
+    GALLIUM_DRIVER="llvmpipe" \
+    LP_NUM_THREADS=2
+
+# Proton: disable logging, reduce memory overhead
+ENV PROTON_LOG=0 \
+    PROTON_NO_WRITE_WATCH=1 \
+    PROTON_NO_ESYNC=1 \
+    PROTON_NO_FSYNC=1
+
+# Disable Wine crash dialogs and debugger
+ENV WINEDLLOVERRIDES="winedbg.exe=d"
+
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

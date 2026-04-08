@@ -17,8 +17,15 @@ ARGS="-port ${ACTUAL_PORT}"
 
 [ -n "${SERVER_PASSWORD}" ] && ARGS="${ARGS} +sv_password ${SERVER_PASSWORD}"
 [ -n "${MAP}" ]             && ARGS="${ARGS} +map ${MAP}"
+ARGS="${ARGS} +rcon_password ddsm_rcon_secret"
 
+# Core server flags
 ARGS="-dedicated -usercon -ip 0.0.0.0 -convars_visible_by_default -allow_no_lobby_connect -novid ${ARGS}"
+
+# Headless rendering optimizations — force minimum resolution and cap
+# render FPS to reduce CPU load from the Proton/DXVK rendering pipeline.
+# Server tick rate is independent of render FPS.
+ARGS="${ARGS} -width 640 -height 480 -nojoy +fps_max 30"
 
 # --- Validate game directory ---
 

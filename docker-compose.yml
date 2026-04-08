@@ -15,10 +15,10 @@ services:
       - STEAM_PASSWORD=${STEAM_PASSWORD}
       - STEAM_2FA_CODE=${STEAM_2FA_CODE}
       - SKIP_UPDATE=${SKIP_UPDATE}
-      - PROTON_LOG=1
-      - PROTON_NO_WRITE_WATCH=1
-      - WINEDLLOVERRIDES=winedbg.exe=d
       - DISPLAY=:99
+      # Rendering optimizations are baked into the Docker image.
+      # Override here only if you need to tune specific values.
+      # LP_NUM_THREADS=2        # llvmpipe CPU threads (default: 2)
     ports:
       - "${PORT:-27015}:${PORT:-27015}/tcp"
       - "${PORT:-27015}:${PORT:-27015}/udp"

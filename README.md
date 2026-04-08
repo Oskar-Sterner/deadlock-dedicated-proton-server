@@ -17,26 +17,45 @@ Run Valve's Deadlock dedicated server on Linux using Docker and GE-Proton. A tem
 
 ## Important: Performance Expectations
 
-**This is not like hosting a CS2 server.** Expect significantly higher resource usage and lower tick rates compared to traditional Source engine dedicated servers.
+**This is not like hosting a CS2 server.** Expect higher resource usage compared to traditional Source engine dedicated servers.
 
 CS2 and other Source engine games ship a **native Linux dedicated server binary** ([srcds](https://developer.valvesoftware.com/wiki/Source_Dedicated_Server)) that runs headless — no GPU, no rendering pipeline, just pure game simulation. That's why CS2 servers run fine on cheap CPU-only VPS instances.
 
 **Deadlock does not have a native Linux server binary.** As of April 2026, Valve only provides a Windows executable (`deadlock.exe`), with no separate dedicated server AppID or headless mode ([Steam Community discussion](https://steamcommunity.com/app/1422450/discussions/0/4431066216144896146/), [SteamDB](https://steamdb.info/app/1422450/)). This project works around that by running the Windows binary through [GE-Proton](https://github.com/GloriousEggroll/proton-ge-custom) (Wine), which means:
 
-- **DXVK + Vulkan rendering is active** even in dedicated mode. On servers without a GPU, this falls back to [Mesa llvmpipe](https://docs.mesa3d.org/drivers/llvmpipe.html) (software rendering), which is CPU-intensive.
-- **Higher CPU and memory usage** compared to a native headless server. Expect 1-2 GB RAM and sustained high CPU usage during gameplay.
-- **Server performance will be limited** on typical VPS hardware. Players may experience lag or low server tick rates, especially on budget instances.
+- **DXVK + Vulkan rendering is still active** even in dedicated mode. On servers without a GPU, this falls back to [Mesa llvmpipe](https://docs.mesa3d.org/drivers/llvmpipe.html) (software rendering on CPU).
+- **Higher CPU and memory usage** compared to a native headless server.
 
-**Recommended hardware for acceptable performance:**
-- A dedicated server or VPS with a **GPU** (e.g. Hetzner GPU instances), OR
-- A high-core-count CPU (8+ cores) to handle software rendering overhead
-- 16 GB+ RAM
+### Headless rendering optimizations
+
+This image includes aggressive optimizations to minimize the rendering overhead:
+
+| Optimization | What it does |
+|---|---|
+| `Xvfb 640x480x8` | Minimal virtual display (down from 1024x768x16) |
+| `-width 640 -height 480` | Forces Source 2 to render at minimum resolution |
+| `+fps_max 30` | Caps render FPS (server tick rate is independent) |
+| `WINEDEBUG=-all` | Suppresses all Wine debug output (major CPU saver) |
+| `DXVK_LOG_LEVEL=none` | Disables DXVK logging |
+| `DXVK_STATE_CACHE=0` | Disables shader cache disk I/O |
+| `MESA_NO_ERROR=1` | Skips OpenGL error checking |
+| `LP_NUM_THREADS=2` | Limits llvmpipe to 2 CPU threads (default: all cores) |
+| `PROTON_NO_ESYNC=1` | Disables eventfd-based synchronization (reduces syscalls) |
+| `PROTON_NO_FSYNC=1` | Disables futex-based synchronization (reduces kernel overhead) |
+| `PROTON_LOG=0` | Disables Proton debug logging |
+| `-nojoy` | Disables joystick subsystem |
+| `-novid` | Skips intro video |
+
+**Recommended hardware:**
+- 4+ CPU cores (8+ recommended for smoother performance)
+- 8 GB+ RAM (16 GB+ recommended)
+- A server with a **GPU** will perform significantly better, but is not required
 
 This is a community workaround. When Valve releases a proper headless Linux server binary (like they did for CS2), these limitations will go away.
 
 ## Requirements
 
-- Linux server with **8 GB+ RAM** (16 GB+ recommended) and **40 GB+ free disk space**
+- Linux server with **4 GB+ RAM** (8 GB+ recommended) and **40 GB+ free disk space**
 - Docker and Docker Compose
 - A Steam account that owns Deadlock
 
@@ -179,15 +198,16 @@ After the initial download, set `SKIP_UPDATE=1` in `.env` so restarts don't need
 
 ### High CPU during startup
 
-Normal. The server uses significant CPU while loading the map (especially with software Vulkan rendering via llvmpipe). It settles down after initialization.
+Normal. The server uses significant CPU while loading the map (especially with software Vulkan rendering via llvmpipe). It settles down after initialization. With the built-in rendering optimizations, idle CPU usage should be significantly lower than without them.
 
 ## How it works
 
 1. **SteamCMD** downloads the Windows Deadlock server files (App ID 1422450)
 2. **GE-Proton** (a Wine-based compatibility layer) runs the Windows `.exe` on Linux
-3. **Xvfb** provides a virtual display that Proton requires
-4. **Mesa llvmpipe** provides software Vulkan rendering for the headless server
-5. **Docker** wraps everything for portability and isolation
+3. **Xvfb** provides a minimal virtual display (640x480x8) that Proton requires
+4. **Mesa llvmpipe** provides software Vulkan rendering, tuned for minimal CPU usage
+5. **DXVK/Wine/Proton** are configured to suppress logging, disable caches, and skip unnecessary subsystems
+6. **Docker** wraps everything for portability and isolation
 
 ## Credits
 
