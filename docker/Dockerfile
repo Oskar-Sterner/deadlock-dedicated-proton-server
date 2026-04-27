@@ -13,8 +13,7 @@ ARG DOTNET_VERSION=10.0.0
 ENV STEAM_HOME="/home/steam" \
     STEAM_PATH="/home/steam/.steam/steam" \
     APPID=${APPID} \
-    DEADWORKS_DIR="/opt/deadworks" \
-    DOTNET_DIR="/opt/dotnet"
+    DEADWORKS_DIR="/opt/deadworks"
 
 RUN mkdir -p ${STEAM_PATH}
 WORKDIR ${STEAM_PATH}
@@ -40,14 +39,20 @@ RUN mkdir -p ${DEADWORKS_DIR} && \
     unzip -q /tmp/deadworks.zip -d ${DEADWORKS_DIR} && \
     rm /tmp/deadworks.zip
 
-# Bundle Windows .NET runtime — required by deadworks.exe (resolved via DOTNET_ROOT)
-RUN mkdir -p ${DOTNET_DIR} && \
+# Bundle Windows .NET runtime directly inside the Wine prefix at the
+# canonical Windows path. Wine's nethost requires the runtime to be
+# discoverable by hostfxr; placing it at "C:\Program Files\dotnet"
+# matches the layout produced by the official Microsoft installer and
+# is what deadworks.exe (built with EnableDynamicLoading) expects.
+# Mounting it elsewhere with DOTNET_ROOT pointing at a Z:\ path was
+# silently failing for plugin DLL loads.
+RUN mkdir -p "steamapps/compatdata/${APPID}/pfx/drive_c/Program Files/dotnet" && \
     wget -qO /tmp/dotnet.zip \
     https://builds.dotnet.microsoft.com/dotnet/Runtime/${DOTNET_VERSION}/dotnet-runtime-${DOTNET_VERSION}-win-x64.zip && \
-    unzip -q /tmp/dotnet.zip -d ${DOTNET_DIR} && \
+    unzip -q /tmp/dotnet.zip -d "steamapps/compatdata/${APPID}/pfx/drive_c/Program Files/dotnet" && \
     rm /tmp/dotnet.zip
 
-RUN chown -R steam:steam ${STEAM_HOME} ${DEADWORKS_DIR} ${DOTNET_DIR}
+RUN chown -R steam:steam ${STEAM_HOME} ${DEADWORKS_DIR}
 
 # Proton environment
 ENV STEAM_COMPAT_CLIENT_INSTALL_PATH=${STEAM_PATH} \
@@ -55,8 +60,8 @@ ENV STEAM_COMPAT_CLIENT_INSTALL_PATH=${STEAM_PATH} \
     PROTON=${STEAM_PATH}/compatibilitytools.d/${PROTON_VERSION}/proton \
     DISPLAY=:99
 
-# .NET runtime path is exposed to the Windows process via Wine's Z: drive mapping
-ENV DOTNET_ROOT='Z:\opt\dotnet'
+# .NET runtime path as seen by the Windows process inside the Wine prefix.
+ENV DOTNET_ROOT='C:\Program Files\dotnet'
 
 # --- Headless rendering optimizations ---
 # These dramatically reduce CPU/memory usage on servers without a GPU
