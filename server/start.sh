@@ -65,12 +65,25 @@ fi
 
 # --- Overlay Deadworks files into the game directory ---
 # Deadworks is bundled in the image at ${DEADWORKS_DIR:-/opt/deadworks}.
-# We re-apply it on every start so SteamCMD validation can't strip it.
+# Sync only files that actually differ — a blind cp -rf forces every
+# lowerdir file to copy up to the overlayfs upperdir when the game dir is
+# an overlay mount, ballooning per-server disk usage by ~37 GB.
 
 DEADWORKS_SRC="${DEADWORKS_DIR:-/opt/deadworks}"
 if [ -d "${DEADWORKS_SRC}/game" ]; then
-    echo "Applying Deadworks framework from ${DEADWORKS_SRC}..."
-    cp -rf "${DEADWORKS_SRC}/game/." "${DEADLOCK_DIR}/game/"
+    echo "Syncing Deadworks framework from ${DEADWORKS_SRC} (checksum-only)..."
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --checksum "${DEADWORKS_SRC}/game/" "${DEADLOCK_DIR}/game/"
+    else
+        cd "${DEADWORKS_SRC}/game" && find . -type f | while read f; do
+            src="${DEADWORKS_SRC}/game/$f"
+            dst="${DEADLOCK_DIR}/game/$f"
+            if [ ! -f "$dst" ] || ! cmp -s "$src" "$dst"; then
+                mkdir -p "$(dirname "$dst")"
+                cp "$src" "$dst"
+            fi
+        done
+    fi
 else
     echo "ERROR: Deadworks files not found at ${DEADWORKS_SRC}"
     die
