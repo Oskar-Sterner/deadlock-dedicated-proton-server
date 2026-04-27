@@ -1,6 +1,6 @@
 # Deadlock Dedicated Proton Server
 
-Run Valve's Deadlock dedicated server on Linux using Docker and GE-Proton. A temporary solution until Valve publishes a native Linux server binary.
+Run Valve's Deadlock dedicated server on Linux using Docker and GE-Proton, with the [Deadworks](https://github.com/Deadworks-net/deadworks) modding framework bundled in. A temporary solution until Valve publishes a native Linux server binary.
 
 > Based on the original [deadlock-proton-server](https://github.com/8ucz3k/deadlock-proton-server) by 8ucz3k, updated with critical fixes for current Deadlock versions.
 
@@ -9,11 +9,29 @@ Run Valve's Deadlock dedicated server on Linux using Docker and GE-Proton. A tem
 | Issue | Original repo | This repo |
 |-------|--------------|-----------|
 | Proton version | GE-Proton9-5 (missing `SteamClient023`) | **GE-Proton10-34** (supports `SteamClient023`) |
-| Executable name | `project8.exe` (renamed by Valve) | **`deadlock.exe`** |
+| Executable name | `project8.exe` (renamed by Valve) | **`deadworks.exe`** (Deadworks-wrapped `deadlock.exe`) |
 | Virtual display | None | **Xvfb** included (required by Proton/Wine) |
 | Vulkan support | None (crashes on headless) | **Mesa llvmpipe** software Vulkan |
 | Default map | `street_test` (doesn't exist) | **`dl_streets`** |
 | Skip updates | Not supported | **`SKIP_UPDATE=1`** to skip SteamCMD on restart |
+| Modding framework | None | **Deadworks bundled** (always launched via `deadworks.exe`) |
+
+## Deadworks integration
+
+The image bundles the [Deadworks](https://github.com/Deadworks-net/deadworks) server-side modding framework:
+
+- The Deadworks release artifact is downloaded at image build time into `/opt/deadworks/` and overlaid onto the game directory each time the container starts (so SteamCMD validation can't strip it).
+- The Windows .NET 10 runtime is bundled at `/opt/dotnet/` and exposed to Wine via `DOTNET_ROOT=Z:\opt\dotnet`.
+- The server is launched via `deadworks.exe` instead of `deadlock.exe`. Plugins drop into `Deadlock/game/bin/win64/managed/plugins/`.
+
+To pin a specific Deadworks or .NET version, override the build args:
+
+```bash
+docker build \
+  --build-arg DEADWORKS_VERSION=v0.4.6 \
+  --build-arg DOTNET_VERSION=10.0.0 \
+  -t deadlock-server -f docker/Dockerfile docker/
+```
 
 ## Important: Performance Expectations
 
@@ -203,15 +221,17 @@ Normal. The server uses significant CPU while loading the map (especially with s
 ## How it works
 
 1. **SteamCMD** downloads the Windows Deadlock server files (App ID 1422450)
-2. **GE-Proton** (a Wine-based compatibility layer) runs the Windows `.exe` on Linux
-3. **Xvfb** provides a minimal virtual display (640x480x8) that Proton requires
-4. **Mesa llvmpipe** provides software Vulkan rendering, tuned for minimal CPU usage
-5. **DXVK/Wine/Proton** are configured to suppress logging, disable caches, and skip unnecessary subsystems
-6. **Docker** wraps everything for portability and isolation
+2. **Deadworks** files (bundled in the image at `/opt/deadworks/`) are overlaid onto the game directory at startup, and the bundled .NET 10 runtime is exposed via `DOTNET_ROOT`
+3. **GE-Proton** (a Wine-based compatibility layer) runs `deadworks.exe` on Linux
+4. **Xvfb** provides a minimal virtual display (640x480x8) that Proton requires
+5. **Mesa llvmpipe** provides software Vulkan rendering, tuned for minimal CPU usage
+6. **DXVK/Wine/Proton** are configured to suppress logging, disable caches, and skip unnecessary subsystems
+7. **Docker** wraps everything for portability and isolation
 
 ## Credits
 
 - Original concept: [8ucz3k/deadlock-proton-server](https://github.com/8ucz3k/deadlock-proton-server)
+- [Deadworks](https://github.com/Deadworks-net/deadworks) — server-side modding framework
 - [GE-Proton](https://github.com/GloriousEggroll/proton-ge-custom) by GloriousEggroll
 - [SteamCMD Docker image](https://hub.docker.com/r/cm2network/steamcmd) by CM2.Network
 

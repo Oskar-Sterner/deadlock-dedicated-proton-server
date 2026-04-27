@@ -1,16 +1,20 @@
 FROM cm2network/steamcmd:root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gosu wget python3 xvfb procps libfreetype6 \
+    gosu wget unzip python3 xvfb procps libfreetype6 \
     mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
 ARG APPID=1422450
 ARG PROTON_VERSION=GE-Proton10-34
+ARG DEADWORKS_VERSION=v0.4.6
+ARG DOTNET_VERSION=10.0.0
 
 ENV STEAM_HOME="/home/steam" \
     STEAM_PATH="/home/steam/.steam/steam" \
-    APPID=${APPID}
+    APPID=${APPID} \
+    DEADWORKS_DIR="/opt/deadworks" \
+    DOTNET_DIR="/opt/dotnet"
 
 RUN mkdir -p ${STEAM_PATH}
 WORKDIR ${STEAM_PATH}
@@ -29,13 +33,30 @@ RUN mkdir -p "steamapps/compatdata/${APPID}/pfx/drive_c/Program Files (x86)/Stea
     wget -qO "steamapps/compatdata/${APPID}/pfx/drive_c/Program Files (x86)/Steam/steamclient64.dll" \
     https://buczek.ru/steamclient64.dll
 
-RUN chown -R steam:steam ${STEAM_HOME}
+# Bundle Deadworks framework — overlaid onto the game directory at container start
+RUN mkdir -p ${DEADWORKS_DIR} && \
+    wget -qO /tmp/deadworks.zip \
+    https://github.com/Deadworks-net/deadworks/releases/download/${DEADWORKS_VERSION}/deadworks-${DEADWORKS_VERSION}.zip && \
+    unzip -q /tmp/deadworks.zip -d ${DEADWORKS_DIR} && \
+    rm /tmp/deadworks.zip
+
+# Bundle Windows .NET runtime — required by deadworks.exe (resolved via DOTNET_ROOT)
+RUN mkdir -p ${DOTNET_DIR} && \
+    wget -qO /tmp/dotnet.zip \
+    https://builds.dotnet.microsoft.com/dotnet/Runtime/${DOTNET_VERSION}/dotnet-runtime-${DOTNET_VERSION}-win-x64.zip && \
+    unzip -q /tmp/dotnet.zip -d ${DOTNET_DIR} && \
+    rm /tmp/dotnet.zip
+
+RUN chown -R steam:steam ${STEAM_HOME} ${DEADWORKS_DIR} ${DOTNET_DIR}
 
 # Proton environment
 ENV STEAM_COMPAT_CLIENT_INSTALL_PATH=${STEAM_PATH} \
     STEAM_COMPAT_DATA_PATH=${STEAM_PATH}/steamapps/compatdata/${APPID} \
     PROTON=${STEAM_PATH}/compatibilitytools.d/${PROTON_VERSION}/proton \
     DISPLAY=:99
+
+# .NET runtime path is exposed to the Windows process via Wine's Z: drive mapping
+ENV DOTNET_ROOT='Z:\opt\dotnet'
 
 # --- Headless rendering optimizations ---
 # These dramatically reduce CPU/memory usage on servers without a GPU
