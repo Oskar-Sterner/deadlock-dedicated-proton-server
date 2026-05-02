@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG APPID=1422450
 ARG PROTON_VERSION=GE-Proton10-34
-ARG DEADWORKS_VERSION=v0.4.6
+ARG DEADWORKS_VERSION=v0.4.7
 ARG DOTNET_VERSION=10.0.0
 
 ENV STEAM_HOME="/home/steam" \
