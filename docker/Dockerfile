@@ -1,7 +1,7 @@
 FROM cm2network/steamcmd:root
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gosu wget unzip python3 xvfb procps libfreetype6 \
+    gosu wget unzip python3 xvfb procps libfreetype6 lsof \
     mesa-vulkan-drivers libvulkan1 libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
