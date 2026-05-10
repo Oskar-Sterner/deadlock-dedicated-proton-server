@@ -58,8 +58,6 @@ This image includes aggressive optimizations to minimize the rendering overhead:
 | `DXVK_STATE_CACHE=0` | Disables shader cache disk I/O |
 | `MESA_NO_ERROR=1` | Skips OpenGL error checking |
 | `LP_NUM_THREADS=2` | Limits llvmpipe to 2 CPU threads (default: all cores) |
-| `PROTON_NO_ESYNC=1` | Disables eventfd-based synchronization (reduces syscalls) |
-| `PROTON_NO_FSYNC=1` | Disables futex-based synchronization (reduces kernel overhead) |
 | `PROTON_LOG=0` | Disables Proton debug logging |
 | `-nojoy` | Disables joystick subsystem |
 | `-novid` | Skips intro video |

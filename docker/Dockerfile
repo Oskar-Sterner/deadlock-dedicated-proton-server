@@ -81,11 +81,18 @@ ENV MESA_NO_ERROR=1 \
     GALLIUM_DRIVER="llvmpipe" \
     LP_NUM_THREADS=2
 
-# Proton: disable logging, reduce memory overhead
+# Proton: disable verbose logging, reduce memory overhead.
+#
+# ESYNC and FSYNC are LEFT ENABLED (we removed PROTON_NO_ESYNC=1 /
+# PROTON_NO_FSYNC=1). Those env vars *disabled* the eventfd/futex sync
+# primitives and forced every Wine wait/signal through wineserver IPC over
+# a Unix socket — measured at ~10-12% of one core dedicated to wineserver
+# alone, and tens of thousands of context switches per second. With ESYNC/
+# FSYNC enabled, sync primitives use kernel eventfd/futex directly,
+# dramatically reducing syscalls. Modern GE-Proton and any kernel >= 5.x
+# supports both reliably.
 ENV PROTON_LOG=0 \
-    PROTON_NO_WRITE_WATCH=1 \
-    PROTON_NO_ESYNC=1 \
-    PROTON_NO_FSYNC=1
+    PROTON_NO_WRITE_WATCH=1
 
 # Disable Wine crash dialogs and debugger
 ENV WINEDLLOVERRIDES="winedbg.exe=d"
